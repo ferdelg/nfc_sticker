@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#4c1d95">
+<title>Hi from Ferdy</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: -apple-system, Helvetica, Arial, sans-serif;
+    background: linear-gradient(135deg, #1e1b4b, #7c3aed);
+    color: white;
+    text-align: center;
+    overflow-x: hidden;
+    padding: 20px;
+  }
+  canvas {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 10;
+  }
+  .wave {
+    font-size: 4.5rem;
+    display: inline-block;
+    animation: wave 1.5s infinite;
+    transform-origin: 70% 70%;
+  }
+  @keyframes wave {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(20deg); }
+    75% { transform: rotate(-15deg); }
+  }
+  h1 {
+    font-size: 2.3rem;
+    margin: 12px 0 14px;
+    min-height: 2.8em;
+  }
+  .cursor {
+    display: inline-block;
+    width: 3px;
+    height: 1em;
+    background: white;
+    margin-left: 3px;
+    vertical-align: -0.1em;
+    animation: blink 0.8s steps(1) infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+  .card {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 20px;
+    padding: 18px 22px;
+    max-width: 360px;
+    width: 100%;
+  }
+  .card p { margin: 6px 0; font-size: 1.05rem; opacity: 0.9; }
+  button {
+    margin-top: 26px;
+    padding: 14px 30px;
+    font-size: 1.1rem;
+    border: none;
+    border-radius: 999px;
+    background: white;
+    color: #4c1d95;
+    font-weight: bold;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+    transition: transform 0.1s;
+  }
+  button:active { transform: scale(0.94); }
+  #taps { margin-top: 12px; min-height: 1.4em; opacity: 0.85; }
+  footer { margin-top: 30px; font-size: 0.85rem; opacity: 0.6; }
+</style>
+</head>
+<body>
+  <canvas id="confetti"></canvas>
+
+  <div class="wave">👋</div>
+  <h1><span id="typed"></span><span class="cursor"></span></h1>
+
+  <div class="card">
+    <p>You just tapped an NFC sticker ✨</p>
+    <p id="visits"></p>
+    <p id="time"></p>
+  </div>
+
+  <button id="btn">Tap me</button>
+  <p id="taps"></p>
+
+  <footer>made with a tiny chip and some code · Ferdy</footer>
+
+<script>
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // typewriter heading
+  const message = "Hi! This was coded by Ferdy";
+  const typed = document.getElementById("typed");
+  if (reduceMotion) {
+    typed.textContent = message;
+  } else {
+    let i = 0;
+    const typer = setInterval(function () {
+      typed.textContent = message.slice(0, i + 1);
+      i++;
+      if (i === message.length) clearInterval(typer);
+    }, 70);
+  }
+
+  // time opened
+  document.getElementById("time").textContent =
+    "Opened at " + new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+
+  // how many times this phone has opened the page
+  let visits = 1;
+  try {
+    visits = Number(localStorage.getItem("ferdyVisits") || 0) + 1;
+    localStorage.setItem("ferdyVisits", visits);
+  } catch (e) {}
+  document.getElementById("visits").textContent =
+    visits === 1 ? "First time here? Welcome!" : "You've tapped this sticker " + visits + " times on this phone";
+
+  // confetti
+  const canvas = document.getElementById("confetti");
+  const ctx = canvas.getContext("2d");
+  const colors = ["#facc15", "#f472b6", "#34d399", "#60a5fa", "#ffffff", "#fb923c"];
+  let pieces = [];
+  let running = false;
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener("resize", resize);
+
+  function burst(x, y, count) {
+    if (reduceMotion) return;
+    for (let n = 0; n < count; n++) {
+      pieces.push({
+        x: x,
+        y: y,
+        vx: (Math.random() - 0.5) * 12,
+        vy: Math.random() * -12 - 3,
+        size: Math.random() * 7 + 4,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        spin: Math.random() * 360,
+        spinSpeed: (Math.random() - 0.5) * 12,
+        life: 0
+      });
+    }
+    if (!running) {
+      running = true;
+      requestAnimationFrame(draw);
+    }
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    pieces.forEach(function (p) {
+      p.vy += 0.3;
+      p.vx *= 0.99;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.spin += p.spinSpeed;
+      p.life++;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.spin * Math.PI / 180);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
+      ctx.restore();
+    });
+    pieces = pieces.filter(function (p) { return p.y < canvas.height + 20 && p.life < 240; });
+    if (pieces.length > 0) {
+      requestAnimationFrame(draw);
+    } else {
+      running = false;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  }
+
+  // big burst when the page opens
+  setTimeout(function () {
+    burst(canvas.width / 2, canvas.height / 3, 120);
+  }, 300);
+
+  // button: counter + little burst
+  let taps = 0;
+  const btn = document.getElementById("btn");
+  btn.addEventListener("click", function () {
+    taps++;
+    document.getElementById("taps").textContent = "Button tapped " + taps + " time" + (taps === 1 ? "" : "s");
+    const r = btn.getBoundingClientRect();
+    burst(r.left + r.width / 2, r.top, 40);
+  });
+</script>
+</body>
+</html>
